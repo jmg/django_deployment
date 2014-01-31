@@ -1,0 +1,3 @@
+django==1.6
+gunicorn
+psycopg2
