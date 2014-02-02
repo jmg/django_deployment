@@ -68,7 +68,6 @@ class ServerDeployer(object):
 
         run("supervisorctl reread")
         run("supervisorctl update")
-        #run("supervisorctl start {0}_gunicorn".format(self.app_remote_dir))
 
     def setup_virtual_env(self):
         """
@@ -90,7 +89,12 @@ class ServerDeployer(object):
             Uploads the virtual host template and restart nginx to update the config
         """
 
-        files.upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_remote_dir))
+        context = {
+            "app": self.app_remote_dir,
+            "gunicorn_port": config["gunicorn_port"],
+        }
+
+        upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_remote_dir), context=context)
         run("service nginx restart")
 
     def clean(self):
@@ -114,5 +118,4 @@ class ServerDeployer(object):
         self.deploy_django_project()
         self.setup_virtual_env()
 
-        if self.production:
-            self.add_webserver_virtual_host()
+        self.add_webserver_virtual_host()
