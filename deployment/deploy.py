@@ -1,6 +1,7 @@
 from fabric.api import cd, run, sudo, put
-from fabric.contrib import files
+
 from utils.commands import *
+from utils.files import upload_template
 
 from config import config
 
@@ -51,9 +52,23 @@ class ServerDeployer(object):
                 sed("-i \"s/'HOST': '[a-zA-Z0-9._\-]*'/'HOST': 'localhost'/g\" settings.py")
 
             python("manage.py syncdb --noinput")
-            #python("manage.py migrate")
+            #python("manage.py migrate --noinput")
 
-            gunicorn("--bind 0.0.0.0:{port} --workers {workers} {app}.wsgi:application ".format(app=self.app_dir, workers=config["gunicorn_workers"], port=config["gunicorn_port"]))
+            self.setup_gunicorn_supervisor()
+
+    def setup_gunicorn_supervisor(self):
+
+        context = {
+            "app_remote_name": self.app_remote_dir,
+            "app_local_name": self.app_dir,
+            "gunicorn_port": config["gunicorn_port"],
+            "user": config["user"]
+        }
+        upload_template("templates/gunicorn_supervisor.conf", "/etc/supervisor/conf.d/{0}_gunicorn.conf".format(self.app_remote_dir), context=context)
+
+        run("supervisorctl reread")
+        run("supervisorctl update")
+        #run("supervisorctl start {0}_gunicorn".format(self.app_remote_dir))
 
     def setup_virtual_env(self):
         """

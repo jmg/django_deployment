@@ -17,6 +17,9 @@ class ServerProvisioner(ServerDeployer):
         apt_get("build-dep python-psycopg2 -y")
         apt_get("install nginx -y")
         apt_get("install supervisor -y")
+        apt_get("install memcached")
+        apt_get("install libmemcached-dev")
+        apt_get("install libxml2-dev libxslt1-dev")
 
     def install_pip_dependencies(self):
         """
