@@ -13,8 +13,8 @@ config = {
     "gunicorn_workers": 4,
     "gunicorn_port": 9001,
 
-    "postgres_user": "bootstrap",
-    "postgres_password": "Bootstrap999",
+    "postgres_user": "testuser",
+    "postgres_password": "testpassword",
 }
 ```
 
@@ -24,7 +24,7 @@ config = {
 Django deployment have never been so easy!
 
 ```bash
-python deploy.py [app_dir] [remote_app_dir]
+python deploy.py --name=testproject --dir=testproject --remote_dir=testproject_remote_dir
 ```
 
 #### Provision and deploy
@@ -32,5 +32,5 @@ python deploy.py [app_dir] [remote_app_dir]
 Provision your server and resolve the dependencies automatically. Then deploy!
 
 ```bash
-python deploy.py [app_dir] [remote_app_dir] --full=True
+python deploy.py --name=testproject --dir=testproject --remote_dir=testproject_remote_dir --full=True
 ```
