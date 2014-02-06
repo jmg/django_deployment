@@ -1,31 +1,25 @@
-import sys
 from fabfile import deploy
-
 from fabric.tasks import execute
 
+from optparse import OptionParser
 
-def run(args):
+
+def run():
     """
         Runs the fabric deploy command.
-
-        Params:
-            args[0]: The app local directory
-            args[1]: The app remote directory
     """
 
-    if not args:
-        exit("App not specified")
+    parser = OptionParser()
+    parser.add_option("-d", "--dir", dest="dir", help="The app local directory")
+    parser.add_option("-r", "--remote_dir", dest="remote_dir", help="The app remote directory")
+    parser.add_option("-n", "--name", dest="name", help="The django app name")
+    parser.add_option("-f", "--full", nargs=0, help="Provision before deploy", default=False)
 
-    app_dir = args[0]
+    (options, args) = parser.parse_args()
 
-    if len(args) > 1:
-        remote_dir = args[1]
-    else:
-        remote_dir = app_dir
-
-    execute(deploy, app_dir=app_dir, app_remote_dir=remote_dir)
+    execute(deploy, **options.__dict__)
 
 
 if __name__ == "__main__":
 
-    run(sys.argv[1:])
+    run()

@@ -10,11 +10,7 @@ for key, value in config.iteritems():
     setattr(env, key, value)
 
 
-def deploy(app_dir=None, app_remote_dir=None, production=False):
+def deploy(dir=None, remote_dir=None, name=None, full=False):
 
-    ServerDeployer(app_dir=app_dir, app_remote_dir=app_remote_dir, production=production).deploy()
-
-
-def full_deploy(app_dir=None, app_remote_dir=None, production=False):
-
-    ServerProvisioner(app_dir=app_dir, app_remote_dir=app_remote_dir, production=production).deploy()
+    Deployer = ServerProvisioner if full is not False else ServerDeployer
+    Deployer(dir=dir, remote_dir=remote_dir, name=name).deploy()

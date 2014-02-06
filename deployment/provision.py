@@ -17,9 +17,10 @@ class ServerProvisioner(ServerDeployer):
         apt_get("build-dep python-psycopg2 -y")
         apt_get("install nginx -y")
         apt_get("install supervisor -y")
-        apt_get("install memcached")
-        apt_get("install libmemcached-dev")
-        apt_get("install libxml2-dev libxslt1-dev")
+        apt_get("install memcached -y")
+        apt_get("install libmemcached-dev -y")
+        apt_get("install libxml2-dev libxslt1-dev -y")
+        apt_get("install python-pip -y")
 
     def install_pip_dependencies(self):
         """
@@ -30,7 +31,7 @@ class ServerProvisioner(ServerDeployer):
         pip("install virtualenv")
         pip("install virtualenvwrapper")
 
-    def deploy():
+    def deploy(self):
         """
             Provision the server and deploy.
         """

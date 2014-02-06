@@ -6,6 +6,6 @@ config = {
     "gunicorn_workers": 4,
     "gunicorn_port": 9002,
 
-    "postgres_user": "bootstrap",
-    "postgres_password": "Bootstrap999",
+    "postgres_user": "testuser",
+    "postgres_password": "testpassword",
 }

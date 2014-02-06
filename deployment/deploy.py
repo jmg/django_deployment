@@ -1,4 +1,8 @@
-from fabric.api import cd, run, sudo, put
+import sys
+
+from fabric.api import cd, run, sudo, put, settings
+from fabric.contrib import django
+from fabric.contrib.files import exists, append
 
 from utils.commands import *
 from utils.files import upload_template
@@ -11,17 +15,20 @@ class ServerDeployer(object):
         Server deployer for django applications using fabric.
     """
 
-    def __init__(self, app_dir, app_remote_dir, production):
+    def __init__(self, dir, remote_dir, name):
         """
             Params:
-                app_dir: the local app dir.
-                app_remote_dir: the remote app dir.
-                production: determines if the app is set for production or dev.
+                dir: the local app dir.
+                remote_dir: the remote app dir.
+                name: the app name or package.
         """
 
-        self.app_dir = app_dir
-        self.app_remote_dir = app_remote_dir
-        self.production = production
+        self.app_dir = dir
+        self.app_remote_dir = remote_dir if remote_dir else self.app_dir
+        self.app_package = name if name else self.app_dir
+
+        sys.path.append(self.app_dir)
+        django.project(self.app_dir)
 
     def deploy_django_project(self):
         """
@@ -29,32 +36,51 @@ class ServerDeployer(object):
         """
 
         local_dir = "{0}/*".format(self.app_dir)
-        remote_dir = self.app_remote_dir
+        app_dir = "{0}".format(self.app_remote_dir)
 
-        mkdir("{0}".format(self.app_remote_dir))
-        put(local_dir, remote_dir)
+        if not exists(app_dir):
+            mkdir(app_dir)
+
+        put(local_dir, self.app_remote_dir)
 
     def install_django_project(self):
         """
             Install the django project, sync the db and run django with gunicorn
         """
 
+        from django.conf import settings as django_settings
+
         with cd("{0}".format(self.app_remote_dir)):
 
             pip("install -r requirements.txt")
 
-            with cd("{0}".format(self.app_dir)):
+            with cd("{0}".format(self.app_package)):
+                self.setup_settings_local()
 
-                sed("-i \"s/'ENGINE': '[a-zA-Z0-9._\-]*'/'ENGINE': 'django.db.backends.postgresql_psycopg2'/g\" settings.py")
-                sed("-i \"s/'NAME': '[a-zA-Z0-9._\-]*'/'NAME': '{0}'/g\" settings.py".format(self.app_remote_dir))
-                sed("-i \"s/'USER': '[a-zA-Z0-9._\-]*'/'USER': '{0}'/g\" settings.py".format(config["postgres_user"]))
-                sed("-i \"s/'PASSWORD': '[a-zA-Z0-9._\-]*'/'PASSWORD': '{0}'/g\" settings.py".format(config["postgres_password"]))
-                sed("-i \"s/'HOST': '[a-zA-Z0-9._\-]*'/'HOST': 'localhost'/g\" settings.py")
-
-            python("manage.py syncdb --noinput")
-            #python("manage.py migrate --noinput")
-
+            self.syncdb(django_settings)
             self.setup_gunicorn_supervisor()
+
+    def setup_settings_local(self):
+
+        line = "\nfrom settings_local import *\n"
+        append("settings.py", line)
+
+        context = {
+            "db_name": "{0}".format(self.app_remote_dir),
+            "db_user": "{0}".format(config["postgres_user"]),
+            "db_pass": "{0}".format(config["postgres_password"]),
+            "db_host": "localhost",
+            "db_port": "",
+        }
+
+        upload_template("templates/settings_local.conf", "settings_local.py", context)
+
+    def syncdb(self, settings):
+
+        python("manage.py syncdb --noinput")
+
+        if "south" in settings.INSTALLED_APPS:
+            python("manage.py migrate --noinput")
 
     def setup_gunicorn_supervisor(self):
 
@@ -82,7 +108,10 @@ class ServerDeployer(object):
         """
 
         with cd("/var/lib/postgresql"):
-            sudo("createdb {0}".format(self.app_remote_dir), user="postgres")
+            with settings(warn_only=True):
+                sudo("psql -c \"CREATE USER {0} WITH PASSWORD '{1}';\"".format(config["postgres_user"], config["postgres_password"]), user="postgres")
+                sudo("createdb {0}".format(self.app_remote_dir), user="postgres")
+                sudo("psql -c \"GRANT ALL PRIVILEGES ON DATABASE {0} TO {1};\"".format(self.app_remote_dir, config["postgres_user"]), user="postgres")
 
     def add_webserver_virtual_host(self):
         """
@@ -95,6 +124,11 @@ class ServerDeployer(object):
         }
 
         upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_remote_dir), context=context)
+
+        with settings(warn_only=True):
+            run("rm /etc/nginx/sites-enabled/default")
+
+        run("ln -s /etc/nginx/sites-available/{app}.conf /etc/nginx/sites-enabled/{app}.conf".format(app=self.app_remote_dir))
         run("service nginx restart")
 
     def clean(self):
@@ -107,9 +141,6 @@ class ServerDeployer(object):
     def deploy(self):
         """
             Deployment template method.
-
-            If the production flag is False nginx is not used. Gunicorn runs as the mail server.
-            If the production flag is True nginx runs as reverse proxy and gunicorn as backend server.
         """
 
         self.clean()
