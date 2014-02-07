@@ -128,10 +128,12 @@ class ServerDeployer(object):
             "gunicorn_port": config["gunicorn_port"],
         }
 
-        upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_name), context=context)
-
         with settings(warn_only=True):
             run("rm /etc/nginx/sites-enabled/default")
+            run("rm /etc/nginx/sites-available/{0}.conf".format(self.app_name))
+            run("rm /etc/nginx/sites-enabled/{0}.conf".format(self.app_name))
+
+        upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_name), context=context)
 
         run("ln -s /etc/nginx/sites-available/{app}.conf /etc/nginx/sites-enabled/{app}.conf".format(app=self.app_name))
         run("service nginx restart")
