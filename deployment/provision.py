@@ -21,6 +21,7 @@ class ServerProvisioner(ServerDeployer):
         apt_get("install libmemcached-dev -y")
         apt_get("install libxml2-dev libxslt1-dev -y")
         apt_get("install python-pip -y")
+        apt_get("install unzip -y")
 
     def install_pip_dependencies(self):
         """

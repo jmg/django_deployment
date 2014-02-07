@@ -10,7 +10,9 @@ for key, value in config.iteritems():
     setattr(env, key, value)
 
 
-def deploy(dir=None, remote_dir=None, name=None, full=False):
+def deploy(dir=None, remote_dir=None, name=None, full=False, no_files=False):
 
-    Deployer = ServerProvisioner if full is not False else ServerDeployer
-    Deployer(dir=dir, remote_dir=remote_dir, name=name).deploy()
+    Deployer = ServerProvisioner if bool(full) is not False else ServerDeployer
+    no_files = bool(no_files) is not False
+
+    Deployer(dir=dir, remote_dir=remote_dir, name=name, no_files=no_files).deploy()

@@ -6,7 +6,7 @@ from fabric.contrib import django
 from fabric.contrib.files import exists, append
 
 from utils.commands import *
-from utils.files import upload_template
+from utils.files import upload_template, make_zip
 
 from config import config
 
@@ -16,7 +16,7 @@ class ServerDeployer(object):
         Server deployer for django applications using fabric.
     """
 
-    def __init__(self, dir, remote_dir, name):
+    def __init__(self, dir, remote_dir, name, no_files):
         """
             Params:
                 dir: the local app dir.
@@ -35,18 +35,29 @@ class ServerDeployer(object):
 
         self.db_name = self.app_name
 
+        self.no_files = no_files
+
     def deploy_django_project(self):
         """
             Copies the local django project to the remote location via scp.
         """
 
-        local_dir = "{0}/*".format(self.app_dir)
+        if self.no_files:
+            return
+
+        local_dir = "{0}".format(self.app_dir)
         app_dir = "{0}".format(self.app_remote_dir)
 
         if not exists(app_dir):
             mkdir(app_dir)
 
-        put(local_dir, self.app_remote_dir)
+        zip_name = make_zip(local_dir, self.app_name)
+        put(zip_name, self.app_remote_dir)
+
+        with cd(self.app_remote_dir):
+            run("unzip -f {0}".format(zip_name))
+
+        os.remove(zip_name)
 
     def install_django_project(self):
         """
