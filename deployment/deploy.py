@@ -1,4 +1,5 @@
 import sys
+import os.path
 
 from fabric.api import cd, run, sudo, put, settings
 from fabric.contrib import django
@@ -20,15 +21,19 @@ class ServerDeployer(object):
             Params:
                 dir: the local app dir.
                 remote_dir: the remote app dir.
-                name: the app name or package.
+                name: the django project name or package.
         """
 
         self.app_dir = dir
-        self.app_remote_dir = remote_dir if remote_dir else self.app_dir
-        self.app_package = name if name else self.app_dir
+        self.app_name = os.path.basename(os.path.normpath(self.app_dir))
+
+        self.app_package = name if name else self.app_name
+        self.app_remote_dir = remote_dir if remote_dir else self.app_name
 
         sys.path.append(self.app_dir)
-        django.project(self.app_dir)
+        django.project(self.app_name)
+
+        self.db_name = self.app_name
 
     def deploy_django_project(self):
         """
@@ -66,7 +71,7 @@ class ServerDeployer(object):
         append("settings.py", line)
 
         context = {
-            "db_name": "{0}".format(self.app_remote_dir),
+            "db_name": "{0}".format(self.db_name),
             "db_user": "{0}".format(config["postgres_user"]),
             "db_pass": "{0}".format(config["postgres_password"]),
             "db_host": "localhost",
@@ -85,12 +90,12 @@ class ServerDeployer(object):
     def setup_gunicorn_supervisor(self):
 
         context = {
-            "app_remote_name": self.app_remote_dir,
-            "app_local_name": self.app_dir,
+            "app_name": self.app_name,
+            "app_package": self.app_package,
             "gunicorn_port": config["gunicorn_port"],
             "user": config["user"]
         }
-        upload_template("templates/gunicorn_supervisor.conf", "/etc/supervisor/conf.d/{0}_gunicorn.conf".format(self.app_remote_dir), context=context)
+        upload_template("templates/gunicorn_supervisor.conf", "/etc/supervisor/conf.d/{0}_gunicorn.conf".format(self.app_name), context=context)
 
         run("supervisorctl reread")
         run("supervisorctl update")
@@ -100,7 +105,7 @@ class ServerDeployer(object):
             Setup the virtual env and install the django project
         """
 
-        venv("{0}_env".format(self.app_remote_dir), self.install_django_project)
+        venv("{0}_env".format(self.app_name), self.install_django_project)
 
     def setup_db(self):
         """
@@ -110,8 +115,8 @@ class ServerDeployer(object):
         with cd("/var/lib/postgresql"):
             with settings(warn_only=True):
                 sudo("psql -c \"CREATE USER {0} WITH PASSWORD '{1}';\"".format(config["postgres_user"], config["postgres_password"]), user="postgres")
-                sudo("createdb {0}".format(self.app_remote_dir), user="postgres")
-                sudo("psql -c \"GRANT ALL PRIVILEGES ON DATABASE {0} TO {1};\"".format(self.app_remote_dir, config["postgres_user"]), user="postgres")
+                sudo("createdb {0}".format(self.db_name), user="postgres")
+                sudo("psql -c \"GRANT ALL PRIVILEGES ON DATABASE {0} TO {1};\"".format(self.db_name, config["postgres_user"]), user="postgres")
 
     def add_webserver_virtual_host(self):
         """
@@ -119,16 +124,16 @@ class ServerDeployer(object):
         """
 
         context = {
-            "app": self.app_remote_dir,
+            "app": self.app_name,
             "gunicorn_port": config["gunicorn_port"],
         }
 
-        upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_remote_dir), context=context)
+        upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_name), context=context)
 
         with settings(warn_only=True):
             run("rm /etc/nginx/sites-enabled/default")
 
-        run("ln -s /etc/nginx/sites-available/{app}.conf /etc/nginx/sites-enabled/{app}.conf".format(app=self.app_remote_dir))
+        run("ln -s /etc/nginx/sites-available/{app}.conf /etc/nginx/sites-enabled/{app}.conf".format(app=self.app_name))
         run("service nginx restart")
 
     def clean(self):
@@ -145,8 +150,8 @@ class ServerDeployer(object):
 
         self.clean()
 
-        self.setup_db()
         self.deploy_django_project()
+        self.setup_db()
         self.setup_virtual_env()
 
         self.add_webserver_virtual_host()
