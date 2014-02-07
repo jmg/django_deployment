@@ -7,7 +7,8 @@ Dead simple deployment for your django apps.
 
 ```python
 config = {
-    "hosts": ["root@example.org"],
+    "hosts": ["@example.org"],
+    "user": "root",
     "password": "root_password",
 
     "gunicorn_workers": 4,
