@@ -89,7 +89,7 @@ class ServerDeployer(object):
             "db_port": "",
         }
 
-        upload_template("templates/settings_local.conf", "settings_local.py", context)
+        upload_template("templates/settings_local.conf", "settings_local.py", context, overwrite=True)
 
     def syncdb(self, settings):
 
@@ -106,7 +106,8 @@ class ServerDeployer(object):
             "gunicorn_port": config["gunicorn_port"],
             "user": config["user"]
         }
-        upload_template("templates/gunicorn_supervisor.conf", "/etc/supervisor/conf.d/{0}_gunicorn.conf".format(self.app_name), context=context)
+
+        upload_template("templates/gunicorn_supervisor.conf", "/etc/supervisor/conf.d/{0}_gunicorn.conf".format(self.app_name), context=context, overwrite=True)
 
         run("supervisorctl reread")
         run("supervisorctl update")
@@ -139,12 +140,11 @@ class ServerDeployer(object):
             "gunicorn_port": config["gunicorn_port"],
         }
 
+        upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_name), context=context, overwrite=True)
+
         with settings(warn_only=True):
             run("rm /etc/nginx/sites-enabled/default")
-            run("rm /etc/nginx/sites-available/{0}.conf".format(self.app_name))
             run("rm /etc/nginx/sites-enabled/{0}.conf".format(self.app_name))
-
-        upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_name), context=context)
 
         run("ln -s /etc/nginx/sites-available/{app}.conf /etc/nginx/sites-enabled/{app}.conf".format(app=self.app_name))
         run("service nginx restart")

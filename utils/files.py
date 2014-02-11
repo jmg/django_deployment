@@ -1,11 +1,16 @@
 import shutil
 from fabric.contrib import files
+from fabric.api import run, settings
 
 
-def upload_template(template_name, remote_name, context=None):
+def upload_template(template_name, remote_name, context=None, overwrite=False):
 
     if context is None:
         context = {}
+
+    if overwrite:
+        with settings(warn_only=True):
+            run("rm {0}".format(remote_name))
 
     files.append(remote_name, render_template(template_name, context))
 
