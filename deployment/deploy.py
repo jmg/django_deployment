@@ -83,8 +83,8 @@ class ServerDeployer(object):
 
         context = {
             "db_name": "{0}".format(self.db_name),
-            "db_user": "{0}".format(config["postgres_user"]),
-            "db_pass": "{0}".format(config["postgres_password"]),
+            "db_user": "{0}".format(config.get("postgres_user", self.app_name)),
+            "db_pass": "{0}".format(config.get("postgres_password", self.app_name)),
             "db_host": "localhost",
             "db_port": "",
         }
@@ -103,8 +103,8 @@ class ServerDeployer(object):
         context = {
             "app_name": self.app_name,
             "app_package": self.app_package,
-            "gunicorn_port": config["gunicorn_port"],
-            "user": config["user"]
+            "gunicorn_port": config.get("gunicorn_port", 8000),
+            "user": config.get("user", "root")
         }
 
         upload_template("templates/gunicorn_supervisor.conf", "/etc/supervisor/conf.d/{0}_gunicorn.conf".format(self.app_name), context=context, overwrite=True)
@@ -126,9 +126,9 @@ class ServerDeployer(object):
 
         with cd("/var/lib/postgresql"):
             with settings(warn_only=True):
-                sudo("psql -c \"CREATE USER {0} WITH PASSWORD '{1}';\"".format(config["postgres_user"], config["postgres_password"]), user="postgres")
+                sudo("psql -c \"CREATE USER {0} WITH PASSWORD '{1}';\"".format(config.get("postgres_user", self.app_name), config.get("postgres_password", self.app_name)), user="postgres")
                 sudo("createdb {0}".format(self.db_name), user="postgres")
-                sudo("psql -c \"GRANT ALL PRIVILEGES ON DATABASE {0} TO {1};\"".format(self.db_name, config["postgres_user"]), user="postgres")
+                sudo("psql -c \"GRANT ALL PRIVILEGES ON DATABASE {0} TO {1};\"".format(self.db_name, config.get("postgres_user", self.app_name)), user="postgres")
 
     def add_webserver_virtual_host(self):
         """
@@ -137,8 +137,13 @@ class ServerDeployer(object):
 
         context = {
             "app": self.app_name,
-            "gunicorn_port": config["gunicorn_port"],
+            "gunicorn_port": config.get("gunicorn_port", 8000),
+            "server_port": config.get("server_port", 80)
         }
+
+        server_name = config.get("server_name")
+        if server_name:
+            context["server_name"] = "server_name {0};".format(server_name)
 
         upload_template("templates/nginx_vhost.conf", "/etc/nginx/sites-available/{0}.conf".format(self.app_name), context=context, overwrite=True)
 
