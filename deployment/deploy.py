@@ -55,7 +55,7 @@ class ServerDeployer(object):
         put(zip_name, self.app_remote_dir)
 
         with cd(self.app_remote_dir):
-            run("unzip -f {0}".format(zip_name))
+            run("unzip -o {0}".format(zip_name))
 
         os.remove(zip_name)
 
