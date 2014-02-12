@@ -16,16 +16,19 @@ config = {
 
     "postgres_user": "testuser",
     "postgres_password": "testpassword",
+    
+    "server_port": 80,
+    "server_name": "example.org www.example.org",
 }
 ```
 
 
 #### Deploy
 
-Django deployment have never been so easy!
+Django deployment has never been so easy!
 
 ```bash
-python deploy.py --name=testproject --dir=testproject --remote_dir=testproject_remote_dir
+python deploy.py --dir=testproject
 ```
 
 #### Provision and deploy
@@ -33,5 +36,5 @@ python deploy.py --name=testproject --dir=testproject --remote_dir=testproject_r
 Provision your server and resolve the dependencies automatically. Then deploy!
 
 ```bash
-python deploy.py --name=testproject --dir=testproject --remote_dir=testproject_remote_dir --full=True
+python deploy.py --dir=testproject --full=True
 ```
