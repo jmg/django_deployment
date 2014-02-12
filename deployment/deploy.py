@@ -111,6 +111,7 @@ class ServerDeployer(object):
 
         run("supervisorctl reread")
         run("supervisorctl update")
+        run("supervisorctl restart {0}_gunicorn".format(self.app_name))
 
     def setup_virtual_env(self):
         """
